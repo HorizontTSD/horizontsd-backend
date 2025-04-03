@@ -28,36 +28,14 @@ app.add_middleware(
 )
 
 
-@app.post("/template_fast_api/v1/greetings")
-async def inputation(body: Annotated[
-    HellowRequest, Body(
-        example={"names": ['Sasha', 'Nikita', 'Kristina']})]):
-    try:
-        names = body.names
-        if names:
-            res = hellow_names(names)
-            return res
-        else:
-            logger.error("Something happened during creation of the search table")
-            raise HTTPException(
-                status_code=400,
-                detail="Bad Request",
-                headers={"X-Error": "Something happened during creation of the search table"},
-            )
-    except Exception as ApplicationError:
-        logger.error(ApplicationError.__repr__())
-        raise HTTPException(
-            status_code=400,
-            detail="Unknown Error",
-            headers={"X-Error": f"{ApplicationError.__repr__()}"},
-        )
+"""Функциональная часть отвечающая за отправку запроса на сайт и получение ответа в формате JSON"""
+from fastapi import FastApi
+import httpx
 
+app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the indicators System API"}
-
-
-if __name__ == "__main__":
-    port = 7070
-    uvicorn.run(app, host="0.0.0.0", port=port)
+@app.post("/")
+async def graph_forecast (data: dict):
+    async with httpx.AsyncClient() as client:
+        response = await client.post("http://77.37.136.11:8501/", params=data)
+        return response.json()
