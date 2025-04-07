@@ -10,8 +10,16 @@ from src.models.schemes import HellowRequest
 from src.utils.greeting import hellow_names
 
 # глобальные переменные приложения
-app = FastAPI
 GORIZONT_URL  = "http://77.37.136.11:8501"
+app = FastAPI(docs_url="/template_fast_api/v1/", openapi_url='/template_fast_api/v1/openapi.json')
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=GORIZONT_URL,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Форма для заполнения клиентом(Model)
 class UserData(BaseModel):
