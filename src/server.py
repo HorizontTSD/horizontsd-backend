@@ -47,7 +47,12 @@ async def process_data(request: ClientRequest):
                 status_code=500,
                 detail=f"Ошибка соединения: {str(e)}"
             )
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the indicators System API"}
+       
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = 7070
+    uvicorn.run(app, host="0.0.0.0", port= port)
