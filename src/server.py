@@ -1,7 +1,13 @@
 # Импортируем необходимые библиотеки.
-from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import httpx
+import uvicorn
+from fastapi import FastAPI, HTTPException, Body
+from fastapi.middleware.cors import CORSMiddleware
+
+from src.config import logger, public_or_local
+from src.models.schemes import HellowRequest
+from src.utils.greeting import hellow_names
 
 # глобальные переменные приложения
 app = FastAPI
@@ -19,7 +25,7 @@ async def process_data(request: ClientRequest):
     """В данной функции(обработчик маршрута) принимаю запрос данными,
         так же нужно отправить на внешний API, делает запрос и 
         возращаем ответ клиенту"""
-   async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient() as client:
         try:
             post_response = await client.post(
                 GORIZONT_URL,
@@ -30,3 +36,18 @@ async def process_data(request: ClientRequest):
             get_response.raise_for_status()
 
             return get_response.json()
+        
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Внешняя ошибка API: {str(e)}"
+            )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Ошибка соединения: {str(e)}"
+            )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
