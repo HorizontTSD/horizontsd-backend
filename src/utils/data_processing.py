@@ -6,6 +6,72 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import LabelEncoder
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+def calculate_statistics(df: pd.DataFrame, target_column: str) -> dict:
+    """
+    Вычисляет описательную статистику для временного ряда.
+    :param df: DataFrame с данными.
+    :param target_column: Название целевого столбца.
+    :return: Словарь с описательной статистикой.
+    """
+    stats = {
+        "min": float(df[target_column].min()),
+        "max": float(df[target_column].max()),
+        "mean": float(df[target_column].mean()),
+        "median": float(df[target_column].median()),
+        "std": float(df[target_column].std())
+    }
+    return stats
+
+def decompose_time_series(df: pd.DataFrame, target_column: str, period: int = 24):
+    """
+    Разлагает временной ряд на тренд, сезонность и остатки.
+    :param df: DataFrame с данными.
+    :param target_column: Название целевого столбца.
+    :param period: Период сезонности (например, 24 часа).
+    :return: Результат декомпозиции.
+    """
+    if len(df) < 2 * period:
+        return {
+            "trend": {},
+            "seasonal": {},
+            "residual": {}
+        }
+    
+    result = seasonal_decompose(df[target_column], model='additive', period=period)
+    return {
+        "trend": result.trend.dropna().to_dict(),
+        "seasonal": result.seasonal.dropna().to_dict(),
+        "residual": result.resid.dropna().to_dict()
+    }
+
+def plot_autocorrelation(df: pd.DataFrame, target_column: str, lags: int = 50):
+    """
+    Строит графики ACF и PACF.
+    :param df: DataFrame с данными.
+    :param target_column: Название целевого столбца.
+    :param lags: Количество лагов.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+    plot_acf(df[target_column], lags=lags, ax=axes[0])
+    plot_pacf(df[target_column], lags=lags, ax=axes[1])
+    plt.tight_layout()
+    plt.show()
+
+def visualize_time_series(df: pd.DataFrame, target_column: str):
+    """
+    Визуализирует временной ряд.
+    :param df: DataFrame с данными.
+    :param target_column: Название целевого столбца.
+    """
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(data=df, x=df.index, y=target_column)
+    plt.title("Time Series Visualization")
+    plt.xlabel("Time")
+    plt.ylabel(target_column)
+    plt.show()
 
 def load_data(data: list) -> pd.DataFrame:
     """
