@@ -1,13 +1,16 @@
 # src/server.py
+import pandas as pd
 from typing import Annotated, List, Dict
 from fastapi import FastAPI, Body, HTTPException
 from pydantic import ValidationError
+from statsmodels.tsa.stattools import acf, pacf
 from src.models.schemes import(
     ForecastResponse, 
     SensorData, 
     MapData, 
     MetricsTable,
-    ForecastData
+    ForecastData,
+    TimeSeriesInput
     )
 from src.utils.data_processing import load_data, preprocess_data, train_model, predict, calculate_metrics, decompose_time_series, calculate_statistics
 
@@ -110,6 +113,171 @@ async def get_forecast_data(
         raise HTTPException(status_code=400, detail=f"Validation error: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# Эндпоинт для основного графика временного ряда
+@app.post("/v1/time_series/line_plot")
+async def get_line_plot(
+    body: Annotated[
+        TimeSeriesInput,
+        Body(
+            example={
+                "data": [
+                    {"time": "2024-09-06 12:00:00", "load_consumption": 123.45},
+                    {"time": "2024-09-06 12:05:00", "load_consumption": 67.89}
+                ],
+                "time_column": "time",
+                "target_column": "load_consumption"
+            }
+        )
+    ]
+):
+    df = pd.DataFrame(body.data)
+    df[body.time_column] = pd.to_datetime(df[body.time_column])
+    df.set_index(body.time_column, inplace=True)
+
+    # Возвращаем данные для графика
+    return {
+        "x": df.index.strftime("%Y-%m-%d %H:%M:%S").tolist(),
+        "y": df[body.target_column].tolist()
+    }
+
+# Эндпоинт для гистограмм по месяцам
+@app.post("/v1/time_series/monthly_histogram")
+async def get_monthly_histogram(
+    body: Annotated[
+        TimeSeriesInput,
+        Body(
+            example={
+                "data": [
+                    {"time": "2024-09-06 12:00:00", "load_consumption": 123.45},
+                    {"time": "2024-09-06 12:05:00", "load_consumption": 67.89}
+                ],
+                "time_column": "time",
+                "target_column": "load_consumption"
+            }
+        )
+    ]
+):
+    df = pd.DataFrame(body.data)
+    df[body.time_column] = pd.to_datetime(df[body.time_column])
+    df.set_index(body.time_column, inplace=True)
+
+    # Группировка по месяцам и вычисление максимума
+    monthly_data = df.resample('M').agg({body.target_column: 'max'}).reset_index()
+
+    return {
+        "months": monthly_data[body.time_column].dt.strftime('%B').tolist(),
+        "values": monthly_data[body.target_column].tolist()
+    }
+
+# эндпоинт для таблицы статистических показателей
+@app.post("/v1/time_series/monthly_statistics")
+async def get_monthly_statistics(
+    body: Annotated[
+        TimeSeriesInput,
+        Body(
+            example={
+                "data": [
+                    {"time": "2024-09-06 12:00:00", "load_consumption": 123.45},
+                    {"time": "2024-09-06 12:05:00", "load_consumption": 67.89}
+                ],
+                "time_column": "time",
+                "target_column": "load_consumption"
+            }
+        )
+    ]
+):
+    df = pd.DataFrame(body.data)
+    df[body.time_column] = pd.to_datetime(df[body.time_column])
+    df.set_index(body.time_column, inplace=True)
+
+    # Группировка по месяцам и вычисление статистики
+    monthly_stats = df.resample('M').agg({
+        body.target_column: ['max', 'min', 'mean', 'median', 'std']
+    }).reset_index()
+
+    # Переименование столбцов
+    monthly_stats.columns = ['month', 'max', 'min', 'mean', 'median', 'std_dev']
+
+    return {
+        "months": monthly_stats['month'].dt.strftime('%B').tolist(),
+        "stats": monthly_stats[['max', 'min', 'mean', 'median', 'std_dev']].to_dict(orient='records')
+    }
+
+# Эндпоинт для Boxplot по месяцам
+@app.post("/v1/time_series/monthly_boxplot")
+async def get_monthly_boxplot(
+    body: Annotated[
+        TimeSeriesInput,
+        Body(
+            example={
+                "data": [
+                    {"time": "2024-09-06 12:00:00", "load_consumption": 123.45},
+                    {"time": "2024-09-06 12:05:00", "load_consumption": 67.89}
+                ],
+                "time_column": "time",
+                "target_column": "load_consumption"
+            }
+        )
+    ]
+):
+    df = pd.DataFrame(body.data)
+    df[body.time_column] = pd.to_datetime(df[body.time_column])
+    df.set_index(body.time_column, inplace=True)
+
+    # Добавляем колонку с месяцами
+    df['month'] = df.index.strftime('%B')
+
+    # Группировка по месяцам
+    monthly_data = df.groupby('month')[body.target_column].apply(list).to_dict()
+
+    return {
+        "months": list(monthly_data.keys()),
+        "data": list(monthly_data.values())
+    }
+
+#  Эндпоинт для ACF/PACF диаграмм
+@app.post("/v1/time_series/acf_pacf")
+async def get_acf_pacf(
+    body: Annotated[
+        TimeSeriesInput,
+        Body(
+            example={
+                "data": [
+                    {"time": "2024-09-06 12:00:00", "load_consumption": 123.45},
+                    {"time": "2024-09-06 12:05:00", "load_consumption": 67.89}
+                ],
+                "time_column": "time",
+                "target_column": "load_consumption"
+            }
+        )
+    ]
+):
+    df = pd.DataFrame(body.data)
+    df[body.time_column] = pd.to_datetime(df[body.time_column])
+    df.set_index(body.time_column, inplace=True)
+
+    # Проверка размера данных
+    if len(df) < 2:
+        raise HTTPException(status_code=400, detail="Insufficient data points for ACF/PACF calculation.")
+
+    # Определяем максимальное значение для nlags
+    max_lags = len(df) // 2 - 1
+    lags = min(30, max_lags)  # Берем минимальное значение между 30 и max_lags
+
+    if lags <= 0:
+        raise HTTPException(status_code=400, detail="Insufficient data points for ACF/PACF calculation.")
+
+    # Вычисляем ACF и PACF
+    acf_values = acf(df[body.target_column], nlags=lags)
+    pacf_values = pacf(df[body.target_column], nlags=lags)
+
+    return {
+        "lags": list(range(lags + 1)),
+        "acf": acf_values.tolist(),
+        "pacf": pacf_values.tolist()
+    }
+
 
 @app.get("/")
 def read_root():

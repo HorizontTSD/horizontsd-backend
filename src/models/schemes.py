@@ -10,6 +10,14 @@ class LegendItem(BaseModel):
     text: Dict[str, str]  # Описание на русском и английском языках
     color: str  # Цвет линии (например, "#FF0000")
 
+class TimeSeriesInput(BaseModel):
+    """
+    Модель для входных данных временного ряда.
+    """
+    data: List[Dict]  # Список словарей с данными
+    time_column: str  # Название колонки времени
+    target_column: str  # Название целевой колонки
+
 class SensorData(BaseModel):
     """
     Модель данных датчика.
