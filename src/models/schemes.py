@@ -2,6 +2,10 @@
 from typing import Dict, List
 from pydantic import BaseModel, RootModel
 
+class Legend(BaseModel):
+    title: Dict[str, str]  # Заголовок графика
+    x_axis: Dict[str, str]  
+    y_axis: Dict[str, str]  
 
 class LegendItem(BaseModel):
     """

@@ -1,13 +1,35 @@
 # src/utils/data_processing.py
 import pandas as pd
 import numpy as np
-import httpx
+from typing import List, Dict
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import LabelEncoder
 from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+def prepare_time_series_dataframe(
+    data: List[Dict],
+    time_column: str,
+    target_column: str
+) -> pd.DataFrame:
+    """
+    Converts a list of time series records into a pandas DataFrame
+    and sets the correct time index.
+
+    Args:
+        data (List[Dict]): Raw input data.
+        time_column (str): Name of the time column.
+        target_column (str): Name of the target column.
+
+    Returns:
+        pd.DataFrame: Preprocessed DataFrame with datetime index.
+    """
+    df = pd.DataFrame(data)
+    df[time_column] = pd.to_datetime(df[time_column])
+    df.set_index(time_column, inplace=True)
+    return df[[target_column]]
 
 def calculate_statistics(df: pd.DataFrame, target_column: str) -> dict:
     """
