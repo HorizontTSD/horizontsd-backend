@@ -13,10 +13,16 @@ dependencies = [
     "coverage-badge>=1.1.0",
     "pdm-bump>=0.7.3",
     "pydantic>=2.6.3",
-    "fastapi>=0.110.0",
-    "uvicorn>=0.28.0",
-    "pandas>=2.2.1",
+    "fastapi>=0.115.12",
+    "uvicorn>=0.34.0",
+    "pandas>=2.2.3",
     "coverage==7.4.4",
+    "numpy>=2.2.4",
+    "scikit-learn>=1.6.1",
+    "joblib>=1.4.2",
+    "statsmodels>=0.14.4",
+    "matplotlib>=3.10.1",
+    "seaborn>=0.13.2",
 ]
 requires-python = ">=3.11"
 readme = "README.md"
@@ -30,6 +36,8 @@ test = [
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+[tool.pdm.scripts]
+start = "uvicorn src.server:app --reload"
 
 [tool.pdm]
 distribution = true
